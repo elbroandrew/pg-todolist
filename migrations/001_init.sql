@@ -1,0 +1,12 @@
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    title VARCHAR(100) NOT NULL,
+    completed BOOLEAN DEFAULT FALSE
+);
