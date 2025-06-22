@@ -1,8 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"pg-todolist/pkg/database"
+)
 
 func main() {
 
-	fmt.Print("Initial")
+	db:=database.InitMySQL()
+
+	defer func(){
+		sqlDB, _ := db.DB()
+		sqlDB.Close()
+	}()
+	
 }

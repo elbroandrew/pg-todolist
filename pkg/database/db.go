@@ -8,9 +8,15 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"github.com/joho/godotenv"
 )
 
 func InitMySQL() *gorm.DB{
+
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("ERROR LOAD .ENV FILE")
+	}
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			os.Getenv("MYSQL_USER"),
 			os.Getenv("MYSQL_PASSWORD"),
@@ -20,7 +26,7 @@ func InitMySQL() *gorm.DB{
 	)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.info),
+		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
 		log.Fatalf("ERROR CONNECTION to MYSQL: %v", err)
