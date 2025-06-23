@@ -23,3 +23,13 @@ func (r *TaskRepository) GetByUserID(userID uint) ([]models.Task, error) {
 	err := r.db.Where("user_id = ?", userID).Find(&tasks).Error
 	return tasks, err
 }
+
+func (r *TaskRepository) Update(task *models.Task) error {
+	return r.db.Save(task).Error
+	 
+}
+
+func (r *TaskRepository) Delete(taskID, userID uint) error {
+	return r.db.Where("id = ? AND user_id = ?", taskID, userID).Delete(&models.Task{}).Error
+
+}

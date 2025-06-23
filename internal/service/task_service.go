@@ -17,6 +17,14 @@ func (s *TaskService) Create(task *models.Task) error {
 	return s.taskRepo.Create(task)
 }
 
-func (s *TaskService) GetTaskByUser(userID uint) ([]models.Task, error) {
+func (s *TaskService) GetTaskByUserID(userID uint) ([]models.Task, error) {
 	return s.taskRepo.GetByUserID(userID)
+}
+
+func (s *TaskService) Update(task *models.Task) error {
+	return s.taskRepo.Update(task)
+}
+
+func (s *TaskService) Delete(taskID, userID uint) error {
+	return s.taskRepo.Delete(taskID, userID)
 }
