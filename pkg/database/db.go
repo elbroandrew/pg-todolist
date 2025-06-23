@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
+	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"github.com/joho/godotenv"
 )
 
 func InitMySQL() *gorm.DB{
@@ -27,6 +28,7 @@ func InitMySQL() *gorm.DB{
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
+		NowFunc: func() time.Time {return time.Now().UTC()},
 	})
 	if err != nil {
 		log.Fatalf("ERROR CONNECTION to MYSQL: %v", err)

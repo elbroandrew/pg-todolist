@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 var ErrRecordNotFound = errors.New("record not found")
+
 type TaskRepository struct {
 	db *gorm.DB
 }

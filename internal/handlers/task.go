@@ -18,7 +18,6 @@ func NewTaskHandler(taskService *service.TaskService) *TaskHandler {
 	return &TaskHandler{taskService: taskService}
 }
 
-
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	var task models.Task
 	if err := c.ShouldBindJSON(&task); err != nil {
@@ -39,7 +38,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) GetTasks(c *gin.Context) {
-	
+
 	//get user ID from JWT
 	userID := c.MustGet("userID").(uint)
 	tasks, err := h.taskService.GetTaskByUserID(userID)
@@ -53,7 +52,6 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 
 }
 
-
 func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 	// Get ID from a URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
@@ -66,7 +64,7 @@ func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 
 	task, err := h.taskService.GetByID(uint(id), userID)
 	if err != nil {
-		if errors.Is(err, service.ErrTaskNotFound){
+		if errors.Is(err, service.ErrTaskNotFound) {
 
 			c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена"})
 			return
@@ -91,7 +89,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверные данные"})
 		return
 	}
-	
+
 	userID := c.MustGet("userID").(uint)
 	task.UserID = userID
 	task.ID = uint(id)
@@ -112,10 +110,10 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 		return
 	}
 
+	//помечает в БД как удалено, но физически удалит только так:
+	//result := r.db.Unscoped().Delete(...)
 
-	
 	userID := c.MustGet("userID").(uint)
-
 
 	if err := h.taskService.Delete(uint(id), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})

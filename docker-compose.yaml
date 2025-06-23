@@ -12,9 +12,9 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - mysql_todo_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ./migrations:/app/migrations
     restart: unless-stopped
 
 volumes:
-  mysql_todo_data:
+  mysql_data:
