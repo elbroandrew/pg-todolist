@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/service"
@@ -49,6 +50,32 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, tasks)
+
+}
+
+
+func (h *TaskHandler) GetTaskByID(c *gin.Context) {
+	// Get ID from a URL parameter
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат ID"})
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+
+	task, err := h.taskService.GetByID(uint(id), userID)
+	if err != nil {
+		if errors.Is(err, service.ErrTaskNotFound){
+
+			c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
 
 }
 
