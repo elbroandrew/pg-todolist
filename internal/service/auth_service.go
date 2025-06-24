@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
 	"pg-todolist/pkg/utils"
@@ -43,7 +44,7 @@ func (s *AuthService) Login(email, password string) (string, error) {
 	// find user by email
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, app_errors.ErrUserNotFound) {
 			return "", errors.New("user not found")
 		}
 		return "", fmt.Errorf("database error: %w", err)

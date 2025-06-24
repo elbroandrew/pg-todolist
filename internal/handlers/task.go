@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/service"
 	"strconv"
@@ -64,7 +65,7 @@ func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 
 	task, err := h.taskService.GetByID(uint(id), userID)
 	if err != nil {
-		if errors.Is(err, service.ErrTaskNotFound) {
+		if errors.Is(err, app_errors.ErrTaskNotFound) {
 
 			c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена"})
 			return
