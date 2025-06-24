@@ -20,7 +20,7 @@ func (s *AuthService) Register(user *models.User) (string, error) {
 	//validate that user Does Not Exist
 	_, err := s.userRepo.FindByEmail(user.Email)
 	if err == nil {
-		return "", errors.New("пользователь уже сущестует")
+		return "", errors.New("пользователь уже существует")
 	}
 	// password hashing
 	hashedPassword, err := utils.HashPassword(user.Password)

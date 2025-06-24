@@ -17,6 +17,25 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
+func (h *AuthHandler) ValidateToken(c *gin.Context) {
+    token := c.GetHeader("Authorization")
+    if token == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Token required"})
+        return
+    }
+
+    _, err := utils.ParseJWT(token)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "valid": false,
+            "error": err.Error(),
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"valid": true})
+}
+
 func (h *AuthHandler) Register(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
