@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"pg-todolist/internal/models"
+	"pg-todolist/internal/app_errors"
 
 	"gorm.io/gorm"
 )
-var ErrRecordNotFound = errors.New("record not found")
+
 
 type TaskRepository struct {
 	db *gorm.DB
@@ -31,7 +32,7 @@ func (r *TaskRepository) GetByID(taskID, userID uint) (*models.Task, error) {
 	var task models.Task
 	err := r.db.Where("id = ? AND user_id = ?", taskID, userID).First(&task).Error
 	if errors.Is(err, gorm.ErrRecordNotFound){
-		return nil, ErrRecordNotFound
+		return nil, app_errors.ErrRecordNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("database error: %w", err)

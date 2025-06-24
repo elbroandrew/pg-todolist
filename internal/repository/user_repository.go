@@ -3,12 +3,13 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 
 	"gorm.io/gorm"
 )
 
-var ErrUserNotFound = errors.New("user not found")
+
 
 type UserRepository struct {
 	db *gorm.DB
@@ -26,7 +27,7 @@ func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	var user models.User
 	err := r.db.Where("email = ?", email).First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound){
-		return nil, ErrUserNotFound
+		return nil, app_errors.ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("database error: %w", err)

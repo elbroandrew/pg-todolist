@@ -3,10 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
 )
-var ErrTaskNotFound = errors.New("user not found")
+
 
 type TaskService struct {
 	taskRepo *repository.TaskRepository
@@ -28,8 +29,8 @@ func (s *TaskService) GetByID(taskID, userID uint) (*models.Task, error) {
 	task, err := s.taskRepo.GetByID(taskID, userID)
 	
 	if err != nil {
-		if errors.Is(err, repository.ErrRecordNotFound){
-			return nil, ErrTaskNotFound
+		if errors.Is(err, app_errors.ErrRecordNotFound){
+			return nil, app_errors.ErrTaskNotFound
 		}
 		return nil, fmt.Errorf("database error: %w", err)
 	}
