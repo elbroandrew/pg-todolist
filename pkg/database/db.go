@@ -34,7 +34,7 @@ func InitMySQL() *gorm.DB{
 		log.Fatalf("ERROR CONNECTION to MYSQL: %v", err)
 	}
 
-	log.Printf("SUCCESSED CONNECTION!")
+	log.Printf("SUCCESS CONNECTION!")
 	return db
 }
 

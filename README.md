@@ -14,6 +14,10 @@ Get into the `todo_db` container:
 
 `SHOW TABLES;`
 
+Или показать схемы таблиц:
+
+`docker-compose exec mysql sh -c 'mysql -u root -p -e "USE todo_db; DESCRIBE users; DESCRIBE tasks;"'`
+
 For Go:
 
 `go mod init pg-todolist`
