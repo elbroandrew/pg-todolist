@@ -33,6 +33,7 @@ func SetupRouter(
 	{
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
+		authGroup.POST("/logout", authHandler.Logout)
 
 		/*****TEST TOKEN*****/
 		authGroup.GET("/validate", authHandler.ValidateToken)

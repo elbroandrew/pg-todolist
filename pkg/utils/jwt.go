@@ -14,7 +14,7 @@ import (
 var jwtSecret []byte
 
 func init() {
-	// Загружаем .env файл
+
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -27,10 +27,19 @@ func init() {
 	jwtSecret = []byte(secret)
 }
 
-func GenerateJWT(userID uint) (string, error) {
+func GenerateTokens(userID uint) (accessToken, refreshToken string, err error){
+	accessToken, err = GenerateJWT(userID, 15*time.Minute)
+	if err != nil {
+		return "", "", err
+	}
+	refreshToken, err = GenerateJWT(userID, 24*7*time.Hour)
+	return accessToken, refreshToken, err
+}
+
+func GenerateJWT(userID uint, duration time.Duration) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userID": userID,
-		"exp":    time.Now().Add(24 * time.Hour).Unix(),
+		"exp":    time.Now().Add(duration).Unix(),
 	})
 	return token.SignedString(jwtSecret)
 }
@@ -46,7 +55,7 @@ func ParseJWT(tokenString string) (uint, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("неожиданный метод подписи: %v", token.Header["alg"])
 		}
-		return []byte(os.Getenv("JWT_SECRET")), nil
+		return jwtSecret, nil
 	})
 	// check errors
 	if err != nil {
