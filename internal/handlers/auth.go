@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/service"
 	"pg-todolist/pkg/utils"
@@ -44,7 +46,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	// validate email & password
 	if !utils.ValidateEmail(user.Email) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректный формат почты"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректный email"})
 		return
 	}
 	if !utils.ValidatePassword(user.Password) {
@@ -70,19 +72,47 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.authService.Login(creds.Email, creds.Password)
+	user, err := h.authService.Login(creds.Email, creds.Password)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if err.Error() == "user not found" || err.Error() == "неверный пароль" {
+		if errors.Is(err, app_errors.ErrUserNotFound) ||
+		   errors.Is(err, app_errors.ErrWrongPassword) {
 			status = http.StatusUnauthorized
 		}
 		c.JSON(status, gin.H{"error": "invalid credentials"})
 		return
 	}
+	accessToken, refreshToken, err := utils.GenerateTokens(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		return
+	}
+	// Set refresh token in HttpOnly cookie
+	c.SetCookie("refresh_token", refreshToken, 3600*24*7, "/", "", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
-		"token": token,
+		"access_token": accessToken,
 		"user": gin.H{
-			"email": creds.Email,
+			"id": user.ID,
+			"email": user.Email,
 		},
 	})
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No refresh token"})
+		return
+	}
+
+	if err := h.authService.RevokeToken(refreshToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Logout failed"})
+		return
+	}
+
+	// Clear the refresh token cookie
+	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }

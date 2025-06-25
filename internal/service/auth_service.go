@@ -7,6 +7,8 @@ import (
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
 	"pg-todolist/pkg/utils"
+	"pg-todolist/pkg/cache"
+	"time"
 )
 
 type AuthService struct {
@@ -17,46 +19,55 @@ func NewAuthService(userRepo *repository.UserRepository) *AuthService {
 	return &AuthService{userRepo: userRepo}
 }
 
-func (s *AuthService) Register(user *models.User) (string, error) {
+func (s *AuthService) Register(user *models.User) (*models.User, error) {
 	//validate that user Does Not Exist
-	_, err := s.userRepo.FindByEmail(user.Email)
-	if err == nil {
-		return "", errors.New("пользователь уже существует")
+	if _, err := s.userRepo.FindByEmail(user.Email); err == nil {
+		return nil, app_errors.ErrEmailExists
 	}
 	// password hashing
 	hashedPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("ошибка хеширования пароля: %w", err)
 	}
 	user.Password = hashedPassword
 
 	//save user to DB
 	if err := s.userRepo.Create(user); err != nil {
-		return "", err
+		return nil, fmt.Errorf("ошибка создания пользователя: %w", err)
 	}
 
-	//Generate JWT token
-	token, err := utils.GenerateJWT(user.ID)
-	return token, err
+	return  user, nil
 }
 
-func (s *AuthService) Login(email, password string) (string, error) {
+func (s *AuthService) Login(email, password string) (*models.User, error) {
 	// find user by email
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
-		if errors.Is(err, app_errors.ErrUserNotFound) {
-			return "", errors.New("user not found")
+		if errors.Is(err, app_errors.ErrRecordNotFound) {
+			return nil, app_errors.ErrUserNotFound
 		}
-		return "", fmt.Errorf("database error: %w", err)
+		return nil, fmt.Errorf("ошибка базы данных: %w", err)
 	}
 	//check password
 	if !utils.CheckPassword(password, user.Password) {
-		return "", errors.New("неверный пароль")
+		return nil, app_errors.ErrWrongPassword
 	}
-	//generate jwt token
-	token, err := utils.GenerateJWT(user.ID)
+
+	return user, nil
+}
+
+func (s *AuthService) RevokeToken(token string) error {
+
+	// Проверяем валидность токена перед отзывом
+	if _, err := utils.ParseJWT(token); err != nil {
+		return fmt.Errorf("invalid token: %w", err)
+	}
+
+	// Добавляем в блеклист на 7 дней
+	err := cache.RevokeToken(token, 24*7*time.Hour)
 	if err != nil {
-		return "", fmt.Errorf("ошибка создания токена: %w", err)
+		return fmt.Errorf("failed to revoke token: %w", err)
 	}
-	return token, nil
+
+	return nil
 }

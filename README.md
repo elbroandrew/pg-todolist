@@ -12,7 +12,19 @@ Get into the `todo_db` container:
 
 `docker exec -ti mysql_todo mysql -u root -p todo_db`
 
+MySQL:
+
 `SHOW TABLES;`
+
+Или показать схемы таблиц:
+
+`docker-compose exec mysql sh -c 'mysql -u root -p -e "USE todo_db; DESCRIBE users; DESCRIBE tasks;"'`
+
+Redis показать все ключи:
+
+`docker exec -ti redis_todo redis-cli`
+
+`KEYS *`
 
 For Go:
 
