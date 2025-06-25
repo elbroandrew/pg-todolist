@@ -6,9 +6,12 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
-	"pg-todolist/pkg/utils"
 	"pg-todolist/pkg/cache"
+	"pg-todolist/pkg/utils"
+	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AuthService struct {
@@ -70,4 +73,26 @@ func (s *AuthService) RevokeToken(token string) error {
 	}
 
 	return nil
+}
+
+func (s *AuthService) Logout(c *gin.Context) error {
+    // 1. Получаем токены
+    accessToken := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+    refreshToken, _ := c.Cookie("refresh_token")
+
+    // 2. Отзываем оба токена
+    if accessToken != "" {
+        if claims, err := utils.GetTokenClaims(accessToken); err == nil {
+            exp := time.Unix(int64(claims["exp"].(float64)), 0)
+            _ = cache.RevokeToken(accessToken, time.Until(exp))
+        }
+    }
+
+    if refreshToken != "" {
+        _ = cache.RevokeToken(refreshToken, 24*time.Hour)
+    }
+
+    // 3. Очищаем куки
+    c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+    return nil
 }
