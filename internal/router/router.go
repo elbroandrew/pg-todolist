@@ -25,8 +25,8 @@ func SetupRouter(
 	})
 
 	//Global middleware (logging, CORS)
-	r.Use(middleware.Logger())
 	r.Use(middleware.CORS())
+	// r.Use(middleware.Logger())
 
 	//Группа для aутентификации
 	authGroup := r.Group("/auth")

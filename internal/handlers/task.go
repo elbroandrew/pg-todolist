@@ -39,7 +39,6 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) GetTasks(c *gin.Context) {
-
 	//get user ID from JWT
 	userID := c.MustGet("userID").(uint)
 	tasks, err := h.taskService.GetTaskByUserID(userID)

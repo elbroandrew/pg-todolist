@@ -1,0 +1,23 @@
+GET http://localhost:8080/health HTTP/1.1
+
+###
+
+# @name login
+POST http://localhost:8080/auth/login HTTP/1.1
+content-type: application/json
+
+{
+    "email": "test1@test.com",
+    "password": "test1"
+}
+
+###
+@authToken = {{login.response.headers.Set-Cookie}}
+
+GET http://localhost:8080/tasks
+Cookie: {{authToken}}
+
+
+###
+POST http://localhost:8080/auth/logout
+Cookie: {{authToken}}

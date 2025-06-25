@@ -24,7 +24,7 @@ func InitRedis(addr, password string, db int) {
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		log.Printf("FAILED TO CONNECT TO REDIS")
 	}
-	log.Printf("SUCCESS CONNECTION!")
+	log.Printf("SUCCESS CONNECTION! REDIS")
 }
 
 func RevokeToken(token string, ttl time.Duration) error {
