@@ -76,23 +76,37 @@ func (s *AuthService) RevokeToken(token string) error {
 }
 
 func (s *AuthService) Logout(c *gin.Context) error {
-    // 1. Получаем токены
+    // Получаем токены
     accessToken := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
     refreshToken, _ := c.Cookie("refresh_token")
 
-    // 2. Отзываем оба токена
+    // Отзыв access токена, если не истек
     if accessToken != "" {
         if claims, err := utils.GetTokenClaims(accessToken); err == nil {
-            exp := time.Unix(int64(claims["exp"].(float64)), 0)
-            _ = cache.RevokeToken(accessToken, time.Until(exp))
+            if exp, ok := claims["exp"].(float64); ok {
+				expTime := time.Unix(int64(exp), 0)
+				ttl := time.Until(expTime)
+                if ttl > 0 {
+                    go cache.RevokeToken(accessToken, ttl)
+                }
+			}
         }
     }
 
+	// Отзыв refresh токена, если не истек
     if refreshToken != "" {
-        _ = cache.RevokeToken(refreshToken, 24*time.Hour)
+        if claims, err := utils.GetTokenClaims(refreshToken); err == nil {
+            if exp, ok := claims["exp"].(float64); ok {
+				expTime := time.Unix(int64(exp), 0)
+				ttl := time.Until(expTime)
+                if ttl > 0 {
+                    go cache.RevokeToken(refreshToken, ttl)
+                }
+			}
+        }
     }
 
-    // 3. Очищаем куки
+    // Очищаем куки
     c.SetCookie("refresh_token", "", -1, "/", "", true, true)
     return nil
 }

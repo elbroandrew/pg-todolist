@@ -17,7 +17,12 @@ content-type: application/json
 GET http://localhost:8080/tasks
 Cookie: {{authToken}}
 
+###
+
+GET http://localhost:8080/tasks/1
+Cookie: {{authToken}}
 
 ###
 POST http://localhost:8080/auth/logout
 Cookie: {{authToken}}
+

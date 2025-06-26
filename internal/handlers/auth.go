@@ -6,6 +6,7 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/service"
+	"pg-todolist/pkg/cache"
 	"pg-todolist/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,22 @@ func (h *AuthHandler) Register(c *gin.Context) {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
+
+	 // Проверяем, есть ли уже валидный refresh token
+    refreshToken, err := c.Cookie("refresh_token")
+	if err == nil {
+		revoked, _ := cache.IsTokenRevoked(refreshToken)
+		if !revoked{
+			if _, err := utils.ParseJWTWithClaims(refreshToken); err == nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Пользователь уже авторизован.",
+					"code":  "already_logged_in",
+				})
+				return
+			}
+		}
+    }
+
 	var creds struct {
 		Email 		string	`json:"email"`
 		Password	string	`json:"password"`
