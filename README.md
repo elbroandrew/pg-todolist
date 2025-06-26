@@ -26,6 +26,8 @@ Redis показать все ключи:
 
 `KEYS *`
 
+`FLUSHDB`
+
 For Go:
 
 `go mod init pg-todolist`

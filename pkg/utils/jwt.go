@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -76,4 +77,32 @@ func ParseJWT(tokenString string) (uint, error) {
 		return uint(userID), nil
 	}
 	return 0, fmt.Errorf("недействительный токен")
+}
+
+func GetTokenClaims(tokenString string) (jwt.MapClaims, error) {
+    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+        return jwtSecret, nil
+    })
+    if err != nil {
+        return nil, err
+    }
+    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+        return claims, nil
+    }
+    return nil, errors.New("invalid token")
+}
+
+func ParseJWTWithClaims(tokenString string) (jwt.MapClaims, error) {
+    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+        return jwtSecret, nil
+    })
+    if err != nil {
+        return nil, err
+    }
+    
+    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+        return claims, nil
+    }
+    
+    return nil, jwt.ErrTokenInvalidClaims
 }

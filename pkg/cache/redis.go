@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -28,8 +29,12 @@ func InitRedis(addr, password string, db int) {
 }
 
 func RevokeToken(token string, ttl time.Duration) error {
+	key := "revoked:" + token
+    if ttl < time.Second {
+        ttl = time.Second // Минимальный TTL
+    }
 	// Добавляем токен в Redis с TTL
-	return rdb.Set(ctx, "revoked:"+token, "1", ttl).Err()
+	return rdb.SetEx(ctx, key, "1", ttl).Err()
 }
 
 func IsTokenRevoked(token string) (bool, error) {
@@ -45,4 +50,15 @@ func Close() {
 	if rdb != nil {
 		rdb.Close()
 	}
+}
+func SetLastRefresh(userID uint, t time.Time) error {
+    return rdb.Set(ctx, fmt.Sprintf("user:%d:last_refresh", userID), t.Unix(), 0).Err()
+}
+
+func GetLastRefresh(userID uint) (time.Time, error) {
+    val, err := rdb.Get(ctx, fmt.Sprintf("user:%d:last_refresh", userID)).Int64()
+	if err == redis.Nil {
+        return time.Now(), nil // Первое обновление
+    }
+    return time.Unix(val, 0), err
 }

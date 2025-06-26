@@ -6,9 +6,12 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
-	"pg-todolist/pkg/utils"
 	"pg-todolist/pkg/cache"
+	"pg-todolist/pkg/utils"
+	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AuthService struct {
@@ -70,4 +73,40 @@ func (s *AuthService) RevokeToken(token string) error {
 	}
 
 	return nil
+}
+
+func (s *AuthService) Logout(c *gin.Context) error {
+    // Получаем токены
+    accessToken := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+    refreshToken, _ := c.Cookie("refresh_token")
+
+    // Отзыв access токена, если не истек
+    if accessToken != "" {
+        if claims, err := utils.GetTokenClaims(accessToken); err == nil {
+            if exp, ok := claims["exp"].(float64); ok {
+				expTime := time.Unix(int64(exp), 0)
+				ttl := time.Until(expTime)
+                if ttl > 0 {
+                    go cache.RevokeToken(accessToken, ttl)
+                }
+			}
+        }
+    }
+
+	// Отзыв refresh токена, если не истек
+    if refreshToken != "" {
+        if claims, err := utils.GetTokenClaims(refreshToken); err == nil {
+            if exp, ok := claims["exp"].(float64); ok {
+				expTime := time.Unix(int64(exp), 0)
+				ttl := time.Until(expTime)
+                if ttl > 0 {
+                    go cache.RevokeToken(refreshToken, ttl)
+                }
+			}
+        }
+    }
+
+    // Очищаем куки
+    c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+    return nil
 }
