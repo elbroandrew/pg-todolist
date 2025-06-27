@@ -6,8 +6,8 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
+	"time"
 )
-
 
 type TaskService struct {
 	taskRepo *repository.TaskRepository
@@ -27,9 +27,9 @@ func (s *TaskService) GetTaskByUserID(userID uint) ([]models.Task, error) {
 
 func (s *TaskService) GetByID(taskID, userID uint) (*models.Task, error) {
 	task, err := s.taskRepo.GetByID(taskID, userID)
-	
+
 	if err != nil {
-		if errors.Is(err, app_errors.ErrRecordNotFound){
+		if errors.Is(err, app_errors.ErrRecordNotFound) {
 			return nil, app_errors.ErrTaskNotFound
 		}
 		return nil, fmt.Errorf("database error: %w", err)
@@ -38,7 +38,25 @@ func (s *TaskService) GetByID(taskID, userID uint) (*models.Task, error) {
 }
 
 func (s *TaskService) Update(task *models.Task) error {
-	return s.taskRepo.Update(task)
+	// Проверяем существование задачи
+	existingTask, err := s.taskRepo.GetByID(task.ID, task.UserID)
+	if err != nil {
+		return fmt.Errorf("ошибка при проверке задачи: %w", err)
+	}
+
+	if existingTask.DeletedAt.Valid {
+		return app_errors.ErrTaskDeleted
+	}
+
+	// Обновляем только разрешенные поля
+	updates := map[string]interface{}{
+		"completed":  task.Completed,
+		"updated_at": time.Now(),
+	}
+
+	//Обновляю задачу
+	return s.taskRepo.Update(task.ID, updates)
+
 }
 
 func (s *TaskService) Delete(taskID, userID uint) error {

@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type TaskHandler struct {
@@ -84,22 +85,45 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	var task models.Task
-	if err := c.ShouldBindJSON(&task); err != nil {
+	//беру только поле completed
+	var request struct {
+		Completed *bool `json:"completed"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверные данные"})
 		return
 	}
 
-	userID := c.MustGet("userID").(uint)
-	task.UserID = userID
-	task.ID = uint(id)
-
-	if err := h.taskService.Update(&task); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
+	if request.Completed == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Поле completed обязательно!"})
 		return
 	}
 
-	c.JSON(http.StatusOK, task)
+	userID := c.MustGet("userID").(uint)
+
+	// обновляю только нужные поля
+	task := models.Task{
+		Model: gorm.Model{ID: uint(id)},
+		UserID:    userID,
+		Completed: *request.Completed,
+	}
+
+	//Обновляю задачу
+	if err := h.taskService.Update(&task); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена."})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"task_id": id,
+		"completed": *request.Completed,
+	})
 
 }
 

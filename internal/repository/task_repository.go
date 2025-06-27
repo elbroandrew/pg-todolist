@@ -3,8 +3,8 @@ package repository
 import (
 	"errors"
 	"fmt"
-	"pg-todolist/internal/models"
 	"pg-todolist/internal/app_errors"
+	"pg-todolist/internal/models"
 
 	"gorm.io/gorm"
 )
@@ -40,9 +40,19 @@ func (r *TaskRepository) GetByID(taskID, userID uint) (*models.Task, error) {
 	return &task, nil
 }
 
-func (r *TaskRepository) Update(task *models.Task) error {
-	return r.db.Save(task).Error
-	 
+func (r *TaskRepository) Update(taskID uint, updates map[string]interface{}) error {
+    result := r.db.Model(&models.Task{}).
+	Where("id = ? AND deleted_at IS NULL", taskID).
+	Updates(updates)
+	
+	if result.Error != nil {
+		return fmt.Errorf("ошибка БД при обновлении задачи: %w", result.Error)
+	}
+	//Если была обновлена хотя бы одна запись
+	if result.RowsAffected == 0 {
+		return app_errors.ErrNoRowsAffected
+	}
+	return nil
 }
 
 func (r *TaskRepository) Delete(taskID, userID uint) error {
