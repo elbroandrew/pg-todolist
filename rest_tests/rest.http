@@ -20,7 +20,16 @@ Cookie: {{authToken}}
 ###
 
 GET http://localhost:8080/tasks/1
-Cookie: {{authToken}}
+Cookie: {{authToken}} 
+
+### Create Task
+# POST http://localhost:8080/tasks
+# Content-Type: application/json
+# Authorization: Bearer {{authToken}}
+
+# {
+#   "title": "Сделать проект"
+# }
 
 ###
 POST http://localhost:8080/auth/logout
