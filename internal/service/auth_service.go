@@ -6,7 +6,7 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
-	"pg-todolist/pkg/cache"
+	"pg-todolist/internal/repository/cache"
 	"pg-todolist/pkg/utils"
 	"strings"
 	"time"
@@ -16,10 +16,14 @@ import (
 
 type AuthService struct {
 	userRepo *repository.UserRepository
+	cache *cache.RedisRepository
 }
 
-func NewAuthService(userRepo *repository.UserRepository) *AuthService {
-	return &AuthService{userRepo: userRepo}
+func NewAuthService(userRepo *repository.UserRepository, cache *cache.RedisRepository) *AuthService {
+	return &AuthService{
+		userRepo: userRepo,
+		cache: cache,
+	}
 }
 
 func (s *AuthService) Register(user *models.User) (*models.User, error) {
@@ -67,7 +71,7 @@ func (s *AuthService) RevokeToken(token string) error {
 	}
 
 	// Добавляем в блеклист на 7 дней
-	err := cache.RevokeToken(token, 24*7*time.Hour)
+	err := s.cache.RevokeToken(token, 24*7*time.Hour)
 	if err != nil {
 		return fmt.Errorf("failed to revoke token: %w", err)
 	}
@@ -87,7 +91,7 @@ func (s *AuthService) Logout(c *gin.Context) error {
 				expTime := time.Unix(int64(exp), 0)
 				ttl := time.Until(expTime)
                 if ttl > 0 {
-                    go cache.RevokeToken(accessToken, ttl)
+                    go s.cache.RevokeToken(accessToken, ttl)
                 }
 			}
         }
@@ -100,13 +104,13 @@ func (s *AuthService) Logout(c *gin.Context) error {
 				expTime := time.Unix(int64(exp), 0)
 				ttl := time.Until(expTime)
                 if ttl > 0 {
-                    go cache.RevokeToken(refreshToken, ttl)
+                    go s.cache.RevokeToken(refreshToken, ttl)
                 }
 			}
         }
     }
 
-    // Очищаем куки
+    // Очищаем refresh token куки
     c.SetCookie("refresh_token", "", -1, "/", "", true, true)
     return nil
 }

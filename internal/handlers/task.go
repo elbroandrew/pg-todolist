@@ -110,7 +110,8 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	//Обновляю задачу
-	if err := h.taskService.Update(&task); err != nil {
+	rowsAffected, err := h.taskService.Update(&task)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена."})
 			return
@@ -123,12 +124,13 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		"status": "success",
 		"task_id": id,
 		"completed": *request.Completed,
+		"rows_updated": rowsAffected,
 	})
 
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	taskID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID задачи"})
 		return
@@ -139,7 +141,21 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 
 	userID := c.MustGet("userID").(uint)
 
-	if err := h.taskService.Delete(uint(id), userID); err != nil {
+	// Проверяем существование задачи перед удалением
+    if _, err := h.taskService.GetByID(uint(taskID), userID); err != nil {
+        if errors.Is(err, app_errors.ErrTaskNotFound) {
+            c.JSON(http.StatusNotFound, gin.H{
+                "error": "Задача не найдена",
+            })
+            return
+        }
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "error": "Ошибка при проверке задачи",
+        })
+        return
+    }
+
+	if _, err := h.taskService.Delete(uint(taskID), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
 		return
 	}

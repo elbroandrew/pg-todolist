@@ -6,7 +6,7 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/service"
-	"pg-todolist/pkg/cache"
+	"pg-todolist/internal/repository/cache"
 	"pg-todolist/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +14,7 @@ import (
 
 type AuthHandler struct {
 	authService *service.AuthService
+	cache cache.RedisRepository
 }
 
 func NewAuthHandler(authService *service.AuthService) *AuthHandler {
@@ -68,7 +69,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	 // Проверяем, есть ли уже валидный refresh token
     refreshToken, err := c.Cookie("refresh_token")
 	if err == nil {
-		revoked, _ := cache.IsTokenRevoked(refreshToken)
+		revoked, _ := h.cache.IsTokenRevoked(refreshToken)
 		if !revoked{
 			if _, err := utils.ParseJWTWithClaims(refreshToken); err == nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -105,7 +106,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 	// Set refresh token in HttpOnly cookie
-	c.SetCookie("refresh_token", refreshToken, 3600*24*7, "/", "", false, true)
+	c.SetCookie("refresh_token", refreshToken, 3600*24*7, "/", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token": accessToken,
@@ -125,19 +126,6 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	 	return
 	
 	}
-	// refreshToken, err := c.Cookie("refresh_token")
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "No refresh token"})
-	// 	return
-	// }
-
-	// if err := h.authService.RevokeToken(refreshToken); err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Logout failed"})
-	// 	return
-	// }
-
-	// // Clear the refresh token cookie
-	// c.SetCookie("refresh_token", "", -1, "/", "", false, true)
-
+	
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }

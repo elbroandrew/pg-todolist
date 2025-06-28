@@ -1,12 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"pg-todolist/internal/handlers"
 	"pg-todolist/internal/repository"
+	"pg-todolist/internal/repository/cache"
 	"pg-todolist/internal/router"
 	"pg-todolist/internal/service"
-	"pg-todolist/pkg/cache"
 	"pg-todolist/pkg/database"
 	"strconv"
 )
@@ -20,23 +21,26 @@ func main() {
 		sqlDB.Close()
 	}()
 
-	rdb, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
-
-	cache.InitRedis(
+	rdb, err := strconv.Atoi(os.Getenv("REDIS_DB"))
+	redisCacheRepo, err := cache.NewRedisRepository(
 		os.Getenv("REDIS_ADDR"),
 		os.Getenv("REDIS_PASSWORD"),
 		rdb,
 	)
 
-	defer cache.Close()
+	if err != nil {
+		fmt.Errorf(err.Error())
+	}
+
+	defer redisCacheRepo.Close()
 
 	//init REPOS
 	userRepo := repository.NewUserRepository(db)
-	taskrepo := repository.NewTaskRepository(db)
+	taskRepo := repository.NewTaskRepository(db)
 
 	//init SERVICES
-	authService := service.NewAuthService(userRepo)
-	taskService := service.NewTaskService(taskrepo)
+	authService := service.NewAuthService(userRepo, redisCacheRepo)
+	taskService := service.NewTaskService(taskRepo, redisCacheRepo)
 
 	//init HANDLERS
 	authHandler := handlers.NewAuthHandler(authService)

@@ -3,7 +3,7 @@ package middleware
 import (
 	"errors"
 	"net/http"
-	"pg-todolist/pkg/cache"
+	"pg-todolist/internal/repository/cache"
 	"pg-todolist/pkg/utils"
 	"strings"
 	"time"
@@ -12,7 +12,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+const (
+	minTokenTTL = 1 * time.Minute
+)
+
+func AuthMiddleware(cache cache.RedisRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		// Поулчаю access token
@@ -20,19 +24,33 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		// если access токен валиден и не отозван - пропускаю запрос
 		if accessToken != "" {
-			if claims, err := utils.ParseJWTWithClaims(accessToken); err == nil {
+			claims, err := utils.ParseJWTWithClaims(accessToken)
+			if err == nil {
 				// если отозван
-				if time.Until(time.Unix(int64(claims["exp"].(float64)), 0)) > 1*time.Minute {
-					c.Set("userID", uint(claims["userID"].(float64)))
-					c.Next()
+				exp, ok := claims["exp"].(float64)
+				if !ok {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+						"error": "Неверный формат токена",
+						"code":  "invalid_token",
+					})
 					return
+				}
+				expTime := time.Unix(int64(exp), 0)
+				if time.Until(expTime) > minTokenTTL {
+					if userID, ok := claims["userID"].(float64); ok {
+						c.Set("userID", uint(userID))
+						c.Next()
+						return
+					}
 				}
 				// проверяю блеклист только для истекшего/почти истекшего токена
 				revoked, err := cache.IsTokenRevoked(accessToken)
 				if err == nil && !revoked {
-					c.Set("userID", uint(claims["userID"].(float64)))
-					c.Next()
-					return
+					if userID, ok := claims["userID"].(float64); ok {
+						c.Set("userID", uint(userID))
+						c.Next()
+						return
+					}
 				}
 			}
 		}
@@ -108,27 +126,6 @@ func AuthMiddleware() gin.HandlerFunc {
             
             c.SetCookie("refresh_token", newRefresh, 3600*24*7, "/", "", true, true)
             cache.SetLastRefresh(userID, time.Now())
-		// 	//Установка нового refresh токена
-		// 	c.SetCookie(
-		// 		"refresh_token",
-		// 		newRefresh,
-		// 		3600*24*7,
-		// 		"/",
-		// 		"",
-		// 		true, // Secure
-		// 		true) // HttpOnly
-		// 	cache.SetLastRefresh(userID, time.Now())
-		// } else {
-		// 	// Используется существующий refresh token из куки
-		// 	existingRefreshToken, _ := c.Cookie("refresh_token")
-		// 	c.SetCookie(
-		// 		"refresh_token",
-		// 		existingRefreshToken,
-		// 		3600*24*7,
-		// 		"/",
-		// 		"",
-		// 		true,
-		// 		true)
 		 }
 
 		c.Header("New-Access-Token", newAccess)
