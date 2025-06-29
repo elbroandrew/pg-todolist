@@ -6,13 +6,12 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
-	"pg-todolist/internal/repository/cache"
 	"time"
 )
 
 type TaskService struct {
 	taskRepo *repository.TaskRepository
-	cache    *cache.RedisRepository
+	cache    *repository.RedisRepository
 }
 
 const (
@@ -21,7 +20,7 @@ const (
 	maxQueueZize     = 100
 )
 
-func NewTaskService(taskRepo *repository.TaskRepository, cache *cache.RedisRepository) *TaskService {
+func NewTaskService(taskRepo *repository.TaskRepository, cache *repository.RedisRepository) *TaskService {
 	return &TaskService{taskRepo: taskRepo, cache: cache}
 }
 
@@ -81,9 +80,9 @@ func (s *TaskService) Update(task *models.Task) (int64, error) {
 		"updated_at": time.Now(),
 	}
 
-	if err != nil {
-		return 0, fmt.Errorf("ошибка сериализации данных: %w", err)
-	}
+	// if err != nil {
+	// 	return 0, fmt.Errorf("ошибка сериализации данных: %w", err)
+	// }
 
 	// Добавляем в очередь обновлений
 	queueSize, err := s.cache.PushUpdate(updateData)

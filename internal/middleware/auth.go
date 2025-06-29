@@ -3,7 +3,7 @@ package middleware
 import (
 	"errors"
 	"net/http"
-	"pg-todolist/internal/repository/cache"
+	"pg-todolist/internal/repository"
 	"pg-todolist/pkg/utils"
 	"strings"
 	"time"
@@ -16,7 +16,7 @@ const (
 	minTokenTTL = 1 * time.Minute
 )
 
-func AuthMiddleware(cache cache.RedisRepository) gin.HandlerFunc {
+func AuthMiddleware(cache *repository.RedisRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		// Поулчаю access token

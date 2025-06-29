@@ -31,6 +31,24 @@ Cookie: {{authToken}}
 #   "title": "Сделать проект"
 # }
 
+### Completed task
+PUT http://localhost:8080/tasks/1
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "completed": true
+}
+
+### UNCompleted task
+PUT http://localhost:8080/tasks/1
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "completed": false
+}
+
 ###
 POST http://localhost:8080/auth/logout
 Cookie: {{authToken}}

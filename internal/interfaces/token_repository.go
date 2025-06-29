@@ -1,11 +1,11 @@
-package cache
+package interfaces
 
 import (
 	"time"
 )
 
 
-type Repository interface {
+type TokenRepository interface {
     RevokeToken(token string, ttl time.Duration) error
     IsTokenRevoked(token string) (bool, error)
     SetLastRefresh(userID uint, t time.Time) error

@@ -2,43 +2,31 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"pg-todolist/internal/app_errors"
+	"pg-todolist/internal/interfaces"
 	"pg-todolist/internal/models"
+
 	"pg-todolist/internal/service"
-	"pg-todolist/internal/repository/cache"
 	"pg-todolist/pkg/utils"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
 	authService *service.AuthService
-	cache cache.RedisRepository
+	tokenCache interfaces.TokenRepository
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService *service.AuthService, tokenCache interfaces.TokenRepository) *AuthHandler {
+	return &AuthHandler{
+		authService: authService, 
+		tokenCache: tokenCache,
+	}
 }
 
-func (h *AuthHandler) ValidateToken(c *gin.Context) {
-    token := c.GetHeader("Authorization")
-    if token == "" {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Token required"})
-        return
-    }
-
-    _, err := utils.ParseJWT(token)
-    if err != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{
-            "valid": false,
-            "error": err.Error(),
-        })
-        return
-    }
-
-    c.JSON(http.StatusOK, gin.H{"valid": true})
-}
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	var user models.User
@@ -66,31 +54,45 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 func (h *AuthHandler) Login(c *gin.Context) {
 
-	 // Проверяем, есть ли уже валидный refresh token
+	// Проверяем, есть ли уже валидный refresh token
     refreshToken, err := c.Cookie("refresh_token")
-	if err == nil {
-		revoked, _ := h.cache.IsTokenRevoked(refreshToken)
-		if !revoked{
-			if _, err := utils.ParseJWTWithClaims(refreshToken); err == nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Пользователь уже авторизован.",
-					"code":  "already_logged_in",
-				})
-				return
-			}
-		}
+    if err == nil && refreshToken != "" {
+        claims, err := utils.ParseJWTWithClaims(refreshToken)
+        if err == nil {
+            // Проверяем срок действия
+            if exp, ok := claims["exp"].(float64); ok {
+                expTime := time.Unix(int64(exp), 0)
+                if time.Now().Before(expTime) {
+                    // Проверяем в Redis, не отозван ли токен
+                    revoked, err := h.tokenCache.IsTokenRevoked(refreshToken)
+                    if err != nil {
+                        log.Printf("Cache error checking revoked token: %v", err)
+                        // Продолжаем, считаем что токен не отозван
+                    } else if !revoked {
+                        c.JSON(http.StatusBadRequest, gin.H{
+                            "error": "User already has active session",
+                            "code":  "already_logged_in",
+                        })
+                        return
+                    }
+                }
+            }
+        }
     }
-
+				
 	var creds struct {
 		Email 		string	`json:"email"`
 		Password	string	`json:"password"`
 	}
+
 	if err := c.ShouldBindJSON(&creds); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверное тело запроса"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Неверное тело запроса",
+		})
 		return
 	}
 
-	user, err := h.authService.Login(creds.Email, creds.Password)
+	user, accessToken, refreshToken, err  := h.authService.Login(creds.Email, creds.Password)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, app_errors.ErrUserNotFound) ||
@@ -100,11 +102,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(status, gin.H{"error": "invalid credentials"})
 		return
 	}
-	accessToken, refreshToken, err := utils.GenerateTokens(user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
-		return
-	}
+	
 	// Set refresh token in HttpOnly cookie
 	c.SetCookie("refresh_token", refreshToken, 3600*24*7, "/", "", true, true)
 
