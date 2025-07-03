@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"pg-todolist/pkg/config"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -12,10 +14,10 @@ import (
 
 type MySQLDB struct {
 	db *gorm.DB
-	cfg *Config
+	cfg *config.Config
 }
 
-func InitMySQL(cfg *Config) Database {
+func InitMySQL(cfg *config.Config) Database {
 
 	return &MySQLDB{cfg: cfg}
 }
@@ -65,3 +67,7 @@ func (m *MySQLDB) HealthCheck(ctx context.Context) error {
 	}
 	return sqlDB.PingContext(ctx)
 }
+
+// func (m *MySQLDB) WithTransaction(ctx context.Context, fn func(tx *gorm.DB) error) error {
+// 	return m.db.WithContext(ctx).Transaction(fn)
+// }
