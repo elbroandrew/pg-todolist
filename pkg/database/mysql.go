@@ -1,39 +1,67 @@
 package database
 
 import (
-	"fmt"
+	"context"
 	"log"
-	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-func InitMySQL() *gorm.DB {
+type MySQLDB struct {
+	db *gorm.DB
+	cfg *Config
+}
 
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("ERROR LOAD .ENV FILE")
-	}
+func InitMySQL(cfg *Config) Database {
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		os.Getenv("MYSQL_USER"),
-		os.Getenv("MYSQL_PASSWORD"),
-		os.Getenv("MYSQL_HOST"),
-		os.Getenv("MYSQL_PORT"),
-		os.Getenv("MYSQL_DATABASE"),
-	)
+	return &MySQLDB{cfg: cfg}
+}
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+func (m *MySQLDB) Connect(ctx context.Context) error {
+
+
+	db, err := gorm.Open(mysql.Open(m.cfg.MySQLDSN()), &gorm.Config{
 		Logger:  logger.Default.LogMode(logger.Info),
 		NowFunc: func() time.Time { return time.Now().UTC() },
+		PrepareStmt: true,
 	})
 	if err != nil {
 		log.Fatalf("ERROR CONNECTION to MYSQL: %v", err)
 	}
 
 	log.Printf("SUCCESS CONNECTION! MYSQL")
-	return db
+
+	sqlDB, _ := db.DB()
+	sqlDB.SetMaxOpenConns(m.cfg.MaxConns)
+
+	m.db = db
+	return nil
+
+}
+
+func (m *MySQLDB) Migrate(models ...interface{}) error {
+	return m.db.AutoMigrate(models...)
+}
+
+func (m *MySQLDB) GetDB() *gorm.DB {
+	return m.db
+}
+
+func (m *MySQLDB) Close() error {
+	sqlDB, err := m.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
+}
+
+func (m *MySQLDB) HealthCheck(ctx context.Context) error {
+	sqlDB, err := m.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.PingContext(ctx)
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"log"
 	"os"
 	"pg-todolist/internal/handlers"
 	"pg-todolist/internal/repository"
@@ -8,16 +10,25 @@ import (
 	"pg-todolist/internal/service"
 	"pg-todolist/pkg/database"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
+
+func init(){
+
+	if err := godotenv.Load(); err != nil {  
+		log.Fatal("ERROR LOAD .ENV FILE")
+	}
+}
 
 func main() {
 
-	db := database.InitMySQL()
+	cfg := database.NewConfigFromEnv()
+	db := database.InitMySQL(cfg)
+	db.Connect(context.Background())
 
-	defer func() {
-		sqlDB, _ := db.DB()
-		sqlDB.Close()
-	}()
+	defer db.Close()
+
 
 	rdb, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
 
