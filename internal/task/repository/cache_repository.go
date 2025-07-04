@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"pg-todolist/internal/models"
 	"pg-todolist/pkg/app_errors"
+	"pg-todolist/pkg/database"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -14,10 +15,10 @@ import (
 
 
 type cacheRepository struct {
-	client *redis.Client
+	client database.RedisClient
 }
 
-func NewTaskCache(client *redis.Client) CacheRepository {
+func NewTaskCache(client database.RedisClient) CacheRepository {
 	return &cacheRepository{client: client}
 }
 
@@ -31,7 +32,7 @@ func (c *cacheRepository) SetUserTasks(userID uint, tasks []models.Task) *app_er
 		fmt.Sprintf("user_tasks:%d", userID), 
 		jsonData, 
 		24*time.Hour,
-	).Err()
+	)
 
 	if err != nil {
 		return app_errors.ErrDBError
@@ -42,7 +43,7 @@ func (c *cacheRepository) SetUserTasks(userID uint, tasks []models.Task) *app_er
 func (c *cacheRepository) GetUserTasks(userID uint) ([]models.Task, *app_errors.AppError) {
 	data, err := c.client.Get(context.Background(), 
 		fmt.Sprintf("user_tasks:%d", userID),
-	).Bytes()
+	)
 
 	if err == redis.Nil {
 		return nil, nil
@@ -52,7 +53,7 @@ func (c *cacheRepository) GetUserTasks(userID uint) ([]models.Task, *app_errors.
 	}
 
 	var tasks []models.Task
-	if err := json.Unmarshal(data, &tasks); err != nil {
+	if err := json.Unmarshal([]byte(data), &tasks); err != nil {
 		return nil, app_errors.ErrInternalServer
 	}
 	return tasks, nil
@@ -61,7 +62,7 @@ func (c *cacheRepository) GetUserTasks(userID uint) ([]models.Task, *app_errors.
 func (c *cacheRepository) InvalidateUserTasks(userID uint) *app_errors.AppError {
 	err := c.client.Del(context.Background(), 
 		fmt.Sprintf("user_tasks:%d", userID),
-	).Err()
+	)
 
 	if err != nil {
 		return app_errors.ErrDBError
@@ -74,7 +75,7 @@ func (c *cacheRepository) MarkCompleted(taskID uint) *app_errors.AppError {
 		fmt.Sprintf("completed_tasks:%d", taskID), 
 		"1", 
 		24*time.Hour,
-	).Err()
+	)
 
 	if err != nil {
 		return app_errors.ErrDBError
@@ -87,7 +88,7 @@ func (c *cacheRepository) MarkDeleted(taskID uint) *app_errors.AppError {
 		fmt.Sprintf("deleted_tasks:%d", taskID), 
 		"1", 
 		24*time.Hour,
-	).Err()
+	)
 
 	if err != nil {
 		return app_errors.ErrDBError

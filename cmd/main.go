@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"log"
+	userRepo "pg-todolist/internal/auth/repository"
 	"pg-todolist/internal/handlers"
-	"pg-todolist/internal/repository"
 	"pg-todolist/internal/router"
-	"pg-todolist/internal/service"
-	"pg-todolist/internal/task/repository"
+	"pg-todolist/internal/auth/service"
+	taskRepo "pg-todolist/internal/task/repository"
+	cacheRepo "pg-todolist/internal/task/repository"
+	tokenRepo "pg-todolist/internal/auth/repository"
 	"pg-todolist/pkg/config"
 	"pg-todolist/pkg/database"
 
@@ -37,9 +39,10 @@ func main() {
 	defer redisClient.Close()
 
 	//init REPOS
-	userRepo := repository.NewUserRepository(db)
-	taskRepo := repository.NewTaskRepository(db)
-	cacheRepo := repository.NewTaskCache(redisClient)
+	userRepo := userRepo.NewUserRepository(db)
+	taskRepo := taskRepo.NewTaskRepository(db)
+	cacheRepo := cacheRepo.NewTaskCache(redisClient)
+	tokenRepo := tokenRepo.NewTokenRepository(redisClient)
 
 	//init SERVICES
 	authService := service.NewAuthService(userRepo, cacheRepo)

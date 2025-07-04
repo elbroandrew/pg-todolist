@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"pg-todolist/pkg/app_errors"
+	"pg-todolist/pkg/database"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,10 +12,10 @@ import (
 
 
 type tokenRepository struct {
-	client *redis.Client
+	client database.RedisClient
 }
 
-func NewTokenRepository(client *redis.Client) TokenRepository {
+func NewTokenRepository(client database.RedisClient) TokenRepository {
 	return &tokenRepository{client: client}
 }
 
@@ -23,7 +24,7 @@ func (r *tokenRepository) StoreRefreshToken(userID uint, token string, expiresAt
 		fmt.Sprintf("refresh_tokens:%d", userID), 
 		token, 
 		time.Until(expiresAt),
-	).Err()
+	)
 	
 	if err != nil {
 		return app_errors.ErrDBError
@@ -34,7 +35,7 @@ func (r *tokenRepository) StoreRefreshToken(userID uint, token string, expiresAt
 func (r *tokenRepository) GetRefreshToken(userID uint) (string, *app_errors.AppError) {
 	token, err := r.client.Get(context.Background(), 
 		fmt.Sprintf("refresh_tokens:%d", userID),
-	).Result()
+	)
 
 	if err == redis.Nil {
 		return "", app_errors.ErrTokenNotFound
@@ -48,7 +49,7 @@ func (r *tokenRepository) GetRefreshToken(userID uint) (string, *app_errors.AppE
 func (r *tokenRepository) DeleteRefreshToken(userID uint) *app_errors.AppError {
 	err := r.client.Del(context.Background(), 
 		fmt.Sprintf("refresh_tokens:%d", userID),
-	).Err()
+	)
 
 	if err != nil {
 		return app_errors.ErrDBError
@@ -61,7 +62,7 @@ func (r *tokenRepository) AddToBlacklist(token string, expiresAt time.Time) *app
 		fmt.Sprintf("blacklist:%s", token), 
 		"1", 
 		time.Until(expiresAt),
-	).Err()
+	)
 
 	if err != nil {
 		return app_errors.ErrDBError
@@ -72,7 +73,7 @@ func (r *tokenRepository) AddToBlacklist(token string, expiresAt time.Time) *app
 func (r *tokenRepository) IsTokenBlacklisted(token string) (bool, *app_errors.AppError) {
 	exists, err := r.client.Exists(context.Background(), 
 		fmt.Sprintf("blacklist:%s", token),
-	).Result()
+	)
 
 	if err != nil {
 		return false, app_errors.ErrDBError
