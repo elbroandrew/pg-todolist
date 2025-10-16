@@ -1,50 +1,65 @@
 package main
 
 import (
+	"log"
 	"os"
 	"pg-todolist/internal/handlers"
+	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
 	"pg-todolist/internal/router"
 	"pg-todolist/internal/service"
 	"pg-todolist/pkg/cache"
 	"pg-todolist/pkg/database"
-	"strconv"
+
+	"github.com/joho/godotenv"
+
 )
 
 func main() {
 
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("ERROR LOAD .env FILE")
+	}
+
 	db := database.InitMySQL()
+	db.AutoMigrate(&models.User{}, &models.Task{})
 
 	defer func() {
 		sqlDB, _ := db.DB()
 		sqlDB.Close()
 	}()
 
-	rdb, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
-
 	cache.InitRedis(
 		os.Getenv("REDIS_ADDR"),
 		os.Getenv("REDIS_PASSWORD"),
-		rdb,
+		0,
 	)
 
 	defer cache.Close()
 
-	//init REPOS
+	//init REPOS -- Data Access Layer
 	userRepo := repository.NewUserRepository(db)
 	taskrepo := repository.NewTaskRepository(db)
 
-	//init SERVICES
+	//init SERVICES -- Business Logic Layer
 	authService := service.NewAuthService(userRepo)
 	taskService := service.NewTaskService(taskrepo)
+	tokenService := service.NewTokenService()
 
-	//init HANDLERS
-	authHandler := handlers.NewAuthHandler(authService)
+	//init HANDLERS -- Presentation Layer
+	authHandler := handlers.NewAuthHandler(authService, tokenService)
 	taskHandler := handlers.NewTaskHandler(taskService)
 
 	//setup router
-	r := router.SetupRouter(authHandler, taskHandler)
+	r := router.SetupRouter(authHandler, taskHandler, tokenService)
 
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("SERVER IS RUNNING ON PORT %s", port)
+	if err := r.Run(":"+port); err != nil {
+		log.Fatalf("FAILED TO RUN SERVER: %v", err)
+	}
 
 }

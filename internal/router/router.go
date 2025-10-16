@@ -3,6 +3,7 @@ package router
 import (
 	"pg-todolist/internal/handlers"
 	"pg-todolist/internal/middleware"
+	"pg-todolist/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,6 +11,7 @@ import (
 func SetupRouter(
 	authHandler *handlers.AuthHandler,
 	taskHandler *handlers.TaskHandler,
+	tokenService *service.TokenService,
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -33,15 +35,13 @@ func SetupRouter(
 	{
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
-		authGroup.POST("/logout", authHandler.Logout)
-
-		/*****TEST TOKEN*****/
-		authGroup.GET("/validate", authHandler.ValidateToken)
-		/****/
+		authGroup.POST("/refresh", authHandler.Refresh)
+		authGroup.POST("/logout", middleware.AuthMiddleware(tokenService), authHandler.Logout)
+		
 	}
 	//Группа для задач - требуется аутентификация
 	tasksGroup := r.Group("/tasks")
-	tasksGroup.Use(middleware.AuthMiddleware()) // JWT
+	tasksGroup.Use(middleware.AuthMiddleware(tokenService)) // для JWT
 	{
 		tasksGroup.GET("", taskHandler.GetTasks)
 		tasksGroup.POST("", taskHandler.CreateTask)

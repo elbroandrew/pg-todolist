@@ -1,7 +1,6 @@
 package models
 
 import (
-
 	"gorm.io/gorm"
 )
 
@@ -10,4 +9,6 @@ type Task struct {
 	Title     string `json:"title" gorm:"not null"`
 	Completed bool   `json:"completed" gorm:"default:false"`
 	UserID    uint   `json:"user_id" gorm:"not null"`
+
+	User User `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

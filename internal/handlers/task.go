@@ -6,6 +6,7 @@ import (
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/models"
 	"pg-todolist/internal/service"
+	"pg-todolist/internal/dto"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -21,21 +22,24 @@ func NewTaskHandler(taskService *service.TaskService) *TaskHandler {
 }
 
 func (h *TaskHandler) CreateTask(c *gin.Context) {
-	var task models.Task
-	if err := c.ShouldBindJSON(&task); err != nil {
+	var req dto.CreateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверные данные"})
 		return
 	}
 	//get user ID from JWT
 	userID := c.MustGet("userID").(uint)
-	task.UserID = userID
+	task := &models.Task{
+		Title: req.Title,
+		UserID: userID,
+	}
 
-	if err := h.taskService.Create(&task); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
+	if err := h.taskService.Create(task); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания задачи."})
 		return
 	}
 
-	c.JSON(http.StatusCreated, task)
+	c.JSON(http.StatusCreated, dto.TaskResponseFromModel(task))
 
 }
 
@@ -45,11 +49,11 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 	tasks, err := h.taskService.GetTaskByUserID(userID)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get tasks."})
 		return
 	}
 
-	c.JSON(http.StatusOK, tasks)
+	c.JSON(http.StatusOK, dto.TasksResponseFromModels(tasks))
 
 }
 
@@ -74,7 +78,7 @@ func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, task)
+	c.JSON(http.StatusOK, dto.TaskResponseFromModel(task))
 
 }
 
@@ -85,45 +89,26 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	//беру только поле completed
-	var request struct {
-		Completed *bool `json:"completed"`
-	}
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверные данные"})
-		return
-	}
-
-	if request.Completed == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Поле completed обязательно!"})
+	var req dto.UpdateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error":"Invalid request data."})
 		return
 	}
 
 	userID := c.MustGet("userID").(uint)
 
-	// обновляю только нужные поля
-	task := models.Task{
-		Model: gorm.Model{ID: uint(id)},
-		UserID:    userID,
-		Completed: *request.Completed,
-	}
-
 	//Обновляю задачу
-	if err := h.taskService.Update(&task); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	updatedTask, err := h.taskService.Update(uint(id), userID, *req.Completed)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, app_errors.ErrTaskNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена."})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера."})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task."})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"task_id": id,
-		"completed": *request.Completed,
-	})
+	c.JSON(http.StatusOK, dto.TaskResponseFromModel(updatedTask))
 
 }
 

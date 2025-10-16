@@ -93,12 +93,22 @@ func GetTokenClaims(tokenString string) (jwt.MapClaims, error) {
 }
 
 func ParseJWTWithClaims(tokenString string) (jwt.MapClaims, error) {
-    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-        return jwtSecret, nil
+    token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return jwtSecret, nil
     })
     if err != nil {
-        return nil, err
-    }
+		if errors.Is(err, jwt.ErrTokenMalformed){
+			return nil, fmt.Errorf("token is malformed: %w", err)  // неверный формат токена
+		} else if errors.Is(err, jwt.ErrTokenSignatureInvalid){
+			return nil, fmt.Errorf("token signature is invalid: %w", err)
+		} else if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet){
+			return nil, err
+		}
+		return nil, fmt.Errorf("could not parse token: %w", err)
+	}
     
     if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
         return claims, nil

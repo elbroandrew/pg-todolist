@@ -1,10 +1,28 @@
-GET http://localhost:8080/health HTTP/1.1
+# -----------------------------------------------------------------
+# Файл для тестирования API
+#
+# Порядок выполнения:
+# 1. Запрос 'register' (если нужно создать пользователя)
+# 2. Запрос 'login'
+# 3. Запрос 'getTasks' (теперь он должен работать)
+# -----------------------------------------------------------------
 
 ###
+# @name register
+# Регистрация нового пользователя
+POST http://localhost:8080/auth/register
+Content-Type: application/json
 
+{
+    "email": "user-for-test@example.com",
+    "password": "password123"
+}
+
+###
 # @name login
-POST http://localhost:8080/auth/login HTTP/1.1
-content-type: application/json
+# Вход в систему. Ответ этого запроса будет использован ниже.
+POST http://localhost:8080/auth/login
+Content-Type: application/json
 
 {
     "email": "test1@test.com",
@@ -12,26 +30,30 @@ content-type: application/json
 }
 
 ###
-@authToken = {{login.response.headers.Set-Cookie}}
+# @name getTasks
+# Получение списка задач.
+# Этот запрос зависит от успешного выполнения запроса 'login'.
+# Он берет 'accessToken' из ответа 'login'.
+#
+# ВАЖНО: Между '###' и 'GET' должна быть пустая строка, чтобы
+# объявление переменной не "прилипло" к запросу 'login'.
+
+@accessToken = {{login.response.body.access_token}}
 
 GET http://localhost:8080/tasks
-Cookie: {{authToken}}
+Authorization: Bearer {{accessToken}}
 
 ###
+# @name createTask
+POST http://localhost:8080/tasks
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
-GET http://localhost:8080/tasks/1
-Cookie: {{authToken}} 
-
-### Create Task
-# POST http://localhost:8080/tasks
-# Content-Type: application/json
-# Authorization: Bearer {{authToken}}
-
-# {
-#   "title": "Сделать проект"
-# }
+{
+    "title":"test task 1"
+}
 
 ###
+# @name logout
 POST http://localhost:8080/auth/logout
-Cookie: {{authToken}}
-
+Authorization: Bearer {{accessToken}}

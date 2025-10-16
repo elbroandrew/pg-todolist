@@ -37,25 +37,29 @@ func (s *TaskService) GetByID(taskID, userID uint) (*models.Task, error) {
 	return task, nil
 }
 
-func (s *TaskService) Update(task *models.Task) error {
+func (s *TaskService) Update(taskID, userID uint, completed bool ) (*models.Task, error) {
 	// Проверяем существование задачи
-	existingTask, err := s.taskRepo.GetByID(task.ID, task.UserID)
+	task, err := s.taskRepo.GetByID(taskID, userID)
 	if err != nil {
-		return fmt.Errorf("ошибка при проверке задачи: %w", err)
+		return nil, app_errors.ErrTaskNotFound
 	}
 
-	if existingTask.DeletedAt.Valid {
-		return app_errors.ErrTaskDeleted
+	if task.DeletedAt.Valid {
+		return nil, app_errors.ErrTaskDeleted
 	}
 
 	// Обновляем только разрешенные поля
 	updates := map[string]interface{}{
-		"completed":  task.Completed,
+		"completed":  completed,
 		"updated_at": time.Now(),
 	}
 
-	//Обновляю задачу
-	return s.taskRepo.Update(task.ID, updates)
+	if err := s.taskRepo.Update(taskID, updates); err != nil {
+		return nil, err
+	}
+
+	task.Completed = completed
+	return task, nil
 
 }
 
