@@ -6,6 +6,8 @@ run:
 
 `docker-compose up -d`
 
+Не обязательно, т.к. автомиграции есть
+
 `docker-compose exec mysql sh -c 'mysql -u root -p todo_db < /app/migrations/001_init.sql'`
 
 Get into the `todo_db` container:
@@ -33,3 +35,5 @@ For Go:
 `go mod init pg-todolist`
 
 `go mod tidy`
+
+`go run cmd/main.go`
