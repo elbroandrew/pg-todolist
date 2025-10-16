@@ -29,7 +29,7 @@ func main() {
 		sqlDB.Close()
 	}()
 
-	cache.InitRedis(
+	redisClient := cache.InitRedis(
 		os.Getenv("REDIS_ADDR"),
 		os.Getenv("REDIS_PASSWORD"),
 		0,
@@ -51,7 +51,7 @@ func main() {
 	taskHandler := handlers.NewTaskHandler(taskService)
 
 	//setup router
-	r := router.SetupRouter(authHandler, taskHandler, tokenService)
+	r := router.SetupRouter(authHandler, taskHandler, tokenService, redisClient)
 
 	port := os.Getenv("PORT")
 	if port == "" {

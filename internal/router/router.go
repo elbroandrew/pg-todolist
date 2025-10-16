@@ -6,12 +6,14 @@ import (
 	"pg-todolist/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 func SetupRouter(
 	authHandler *handlers.AuthHandler,
 	taskHandler *handlers.TaskHandler,
 	tokenService *service.TokenService,
+	redisClient *redis.Client,
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -30,12 +32,14 @@ func SetupRouter(
 	r.Use(middleware.CORS())
 	// r.Use(middleware.Logger())
 
+	rateLimitMiddleware := middleware.NewRateLimiter(redisClient)
+
 	//Группа для aутентификации
 	authGroup := r.Group("/auth")
 	{
-		authGroup.POST("/register", authHandler.Register)
-		authGroup.POST("/login", authHandler.Login)
-		authGroup.POST("/refresh", authHandler.Refresh)
+		authGroup.POST("/register", rateLimitMiddleware, authHandler.Register)
+		authGroup.POST("/login", rateLimitMiddleware, authHandler.Login)
+		authGroup.POST("/refresh", rateLimitMiddleware, authHandler.Refresh)
 		authGroup.POST("/logout", middleware.AuthMiddleware(tokenService), authHandler.Logout)
 		
 	}

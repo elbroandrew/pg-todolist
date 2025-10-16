@@ -14,7 +14,7 @@ var (
 	ctx = context.Background()
 )
 
-func InitRedis(addr, password string, db int) {
+func InitRedis(addr, password string, db int) *redis.Client {
 	rdb = redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
@@ -26,6 +26,7 @@ func InitRedis(addr, password string, db int) {
 		log.Printf("FAILED TO CONNECT TO REDIS")
 	}
 	log.Printf("SUCCESS CONNECTION! REDIS")
+	return rdb
 }
 
 func RevokeToken(token string, ttl time.Duration) error {
