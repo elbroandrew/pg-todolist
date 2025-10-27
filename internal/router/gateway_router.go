@@ -24,11 +24,13 @@ func NewReverseProxy(target string) gin.HandlerFunc {
 
 	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
 
+	originalDirector := proxy.Director
+
 	proxy.Director = func(req *http.Request){
-		req.URL.Scheme = targetUrl.Scheme
-		req.URL.Host = targetUrl.Host
-		req.URL.Path = req.URL.Path
-		req.Host = targetUrl.Host
+
+		//сначала вызову оригинальный директор, он правильно настроит req.URL.Host, req.URL.Scheme,
+		//и некоторые заголовки типа "X-Forwarded-For"
+		originalDirector(req)
 
 		//использую типизированный ключ для контекста, чтобы избежать коллизий
 		type contextKey string
@@ -44,8 +46,11 @@ func NewReverseProxy(target string) gin.HandlerFunc {
 			log.Println("userID in context is not of type uint")
 			return 
 		}
+		//устанавливаю заголовок для внутреннего сервиса
 		req.Header.Set("X-User-ID", strconv.FormatUint(uint64(userID), 10))
 		req.Header.Del("Authorization")
+		//явно указываю заголовок Host, чтобы целевой сервис правильно его видел, если он использует виртуальные хосты
+		req.Host = targetUrl.Host
 	}
 	return func(c *gin.Context){
 		type contextKey string
