@@ -46,7 +46,7 @@ func SetupTaskServiceRouter(taskHandler *handlers.TaskHandler) *gin.Engine {
 		tasksGroup.DELETE("/:id", taskHandler.DeleteTask)
 	}
 
-	//curl -X GET http://localhost:8080/health
+	//curl -X GET http://localhost:8081/health
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "Task Service is healthy"})
 	})
