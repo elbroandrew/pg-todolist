@@ -1,29 +1,74 @@
 version: '3.8'
 
 services:
+  gateway:
+    build:
+      context: .
+      dockerfile: cmd/gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - GATEWAY_PORT=${GATEWAY_PORT}
+      - TASK_SERVICE_URL=${TASK_SERVICE_URL}
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - REDIS_ADDR=${REDIS_ADDR}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - todolist-network
+    depends_on:
+      - mysql
+      - redis
+      - task_service
+  task_service:
+    build:
+      context: .
+      dockerfile: cmd/task_service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - TASK_SERVICE_PORT=${TASK_SERVICE_PORT}
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    networks:
+      - todolist-network
+    depends_on:
+      - mysql
   mysql:
     image: mysql:latest
-    container_name: mysql_todo
     environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: todo_db
-      MYSQL_USER: todo_user
-      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./migrations:/app/migrations
     restart: unless-stopped
+    networks:
+      - todolist-network
   redis:
     image: redis:latest
-    container_name: redis_todo
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    networks:
+      - todolist-network
 
 volumes:
   mysql_data:
   redis_data:
+
+networks:
+  todolist-network:
+    driver: bridge
