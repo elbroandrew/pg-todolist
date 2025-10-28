@@ -14,7 +14,7 @@ POST http://localhost:8080/auth/register
 Content-Type: application/json
 
 {
-    "email": "user-for-test@example.com",
+    "email": "docker-user-test@example.com",
     "password": "password123"
 }
 
@@ -50,7 +50,7 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-    "title":"test task 1"
+    "title":"docker test"
 }
 
 ###

@@ -9,13 +9,15 @@ import (
 	"pg-todolist/internal/handlers"
 	"pg-todolist/internal/middleware"
 	"pg-todolist/internal/service"
+	"pg-todolist/internal/contextkeys"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
 
-//обработчик Reverse Proxy для проксирования запросов /tasks на TaskService. Она знает URL TaskService'a.
+
+//обработчик Reverse Proxy для проксирования запросов /tasks на TaskService. Он знает URL TaskService'a.
 func NewReverseProxy(target string) gin.HandlerFunc {
 	targetUrl, err := url.Parse(target)
 	if err != nil {
@@ -28,15 +30,12 @@ func NewReverseProxy(target string) gin.HandlerFunc {
 
 	proxy.Director = func(req *http.Request){
 
-		//сначала вызову оригинальный директор, он правильно настроит req.URL.Host, req.URL.Scheme,
+		//сначала вызову оригинальный директор, он правильно настроит req.URL.Host,  req.URL.Scheme,
 		//и некоторые заголовки типа "X-Forwarded-For"
 		originalDirector(req)
 
-		//использую типизированный ключ для контекста, чтобы избежать коллизий
-		type contextKey string
-		const userIDKey contextKey = "userID"
 
-		userIDVal := req.Context().Value(userIDKey)
+		userIDVal := req.Context().Value(contextkeys.UserIDKey)
 		if userIDVal == nil {
 			log.Println("userID not found in context for proxying")
 			return 
@@ -53,10 +52,8 @@ func NewReverseProxy(target string) gin.HandlerFunc {
 		req.Host = targetUrl.Host
 	}
 	return func(c *gin.Context){
-		type contextKey string
-		const userIDKey contextKey = "userID"
 		if userID, exists := c.Get("userID"); exists {
-			ctx := context.WithValue(c.Request.Context(), userIDKey, userID)
+			ctx := context.WithValue(c.Request.Context(), contextkeys.UserIDKey, userID)
 			c.Request = c.Request.WithContext(ctx)
 		}
 		proxy.ServeHTTP(c.Writer, c.Request)
@@ -68,10 +65,13 @@ func SetupGatewayRouter(
 	authHandler *handlers.AuthHandler,
 	tokenService *service.TokenService,
 	redisClient *redis.Client,
-	taskSrviceURL string,
+	taskServiceURL string,
 ) *gin.Engine {
 	r := gin.Default()
+	r.RedirectTrailingSlash = false
+	r.RedirectFixedPath = false
 	r.Use(middleware.CORS())
+
 
 	rateLimitMiddleware := middleware.NewRateLimiter(redisClient)
 
@@ -85,15 +85,20 @@ func SetupGatewayRouter(
 	}
 
 	//прокси эндпоинты
-	tasksProxy := NewReverseProxy(taskSrviceURL)
+	tasksProxy := NewReverseProxy(taskServiceURL)
 	tasksGroup := r.Group("/tasks")
 	tasksGroup.Use(middleware.AuthMiddleware(tokenService))
 	{
+		// вот эти явные пути - чтоб Gin не делал редиректы на trailing slash в конце
+		tasksGroup.GET("", tasksProxy)
+		tasksGroup.POST("", tasksProxy)
+		tasksGroup.DELETE("", tasksProxy)
+
+		
 		tasksGroup.Any("/*any", tasksProxy)
 	}
 
 	//healthcheck
-	//curl -X GET http://localhost:8080/health
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "Gateway is ok"})
 	})
