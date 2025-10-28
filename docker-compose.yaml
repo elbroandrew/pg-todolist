@@ -20,15 +20,20 @@ services:
     networks:
       - todolist-network
     depends_on:
-      - mysql
-      - redis
-      - task_service
+      task_service:
+        condition: service_healthy
   task_service:
     build:
       context: .
       dockerfile: cmd/task_service/Dockerfile
     ports:
       - "8081:8081"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     environment:
       - TASK_SERVICE_PORT=${TASK_SERVICE_PORT}
       - MYSQL_HOST=mysql
@@ -39,9 +44,15 @@ services:
     networks:
       - todolist-network
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
   mysql:
     image: mysql:latest
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}

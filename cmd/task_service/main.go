@@ -11,15 +11,15 @@ import (
 	"pg-todolist/pkg/database"
 	"pg-todolist/pkg/server"
 
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 )
 
 
 
 func main(){
-	if err := godotenv.Load(); err != nil {
-		log.Println("ERROR LOAD .env FILE")
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println("ERROR LOAD .env FILE")
+	// }
 
 	db := database.InitMySQL()
 	sqlDB, _ := db.DB()
