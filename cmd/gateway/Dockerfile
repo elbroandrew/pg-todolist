@@ -10,7 +10,10 @@ COPY ../../ ./
 WORKDIR /app/cmd/gateway
 RUN CGO_ENABLED=0 go build -ldflags "-s -w" -o /bin/gateway
 
-FROM scratch
+FROM alpine:latest
+
+# add curl for healthchecks
+RUN apk add --no-cache curl
 
 COPY --from=builder /bin/gateway /gateway
 
