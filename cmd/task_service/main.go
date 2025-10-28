@@ -18,7 +18,7 @@ import (
 
 func main(){
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("ERROR LOAD .env FILE")
+		log.Println("ERROR LOAD .env FILE")
 	}
 
 	db := database.InitMySQL()

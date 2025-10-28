@@ -12,13 +12,13 @@ import (
 	"pg-todolist/pkg/database"
 	"pg-todolist/pkg/server"
 
-	"github.com/joho/godotenv"
 )
 
 func main() {
 
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("ERROR LOAD .env FILE")
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is not set.")
 	}
 
 	db := database.InitMySQL()
@@ -39,7 +39,7 @@ func main() {
 	//init SERVICES -- Business Logic Layer
 	authService := service.NewAuthService(userRepo)
 	
-	tokenService := service.NewTokenService()
+	tokenService := service.NewTokenService(jwtSecret)
 
 	//init HANDLERS -- Presentation Layer
 	authHandler := handlers.NewAuthHandler(authService, tokenService)

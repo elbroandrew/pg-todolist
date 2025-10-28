@@ -19,22 +19,22 @@ var (
 )
 
 type TokenService struct {
-	// Здесь можно добавить зависимости, например, конфиг с секретом и временами жизни
+	jwtSecret []byte
 }
 
-func NewTokenService() *TokenService {
-	return &TokenService{}
+func NewTokenService(secret string) *TokenService {
+	return &TokenService{jwtSecret: []byte(secret)}
 }
 
 // GenerateTokenPair создает новую пару access и refresh токенов
 func (s *TokenService) GenerateTokenPair(userID uint) (accessToken, refreshToken string, err error) {
-	return utils.GenerateTokens(userID)
+	return utils.GenerateTokens(userID, s.jwtSecret)
 }
 
 // ValidateAccessToken проверяет access токен. Возвращает userID или ошибку.
 func (s *TokenService) ValidateAccessToken(tokenString string) (uint, error) {
 	// 1. Парсим токен
-	claims, err := utils.ParseJWTWithClaims(tokenString)
+	claims, err := utils.ParseJWTWithClaims(tokenString, s.jwtSecret)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return 0, ErrTokenExpired
@@ -69,7 +69,7 @@ func (s *TokenService) RefreshTokens(oldRefreshToken string) (newAccessToken, ne
 	}
 
 	// 2. Валидируем старый refresh токен
-	claims, err := utils.ParseJWTWithClaims(oldRefreshToken)
+	claims, err := utils.ParseJWTWithClaims(oldRefreshToken, s.jwtSecret)
 	if err != nil {
 		// Если он истек, добавляем его в черный список на всякий случай
 		if errors.Is(err, jwt.ErrTokenExpired) {
@@ -108,7 +108,7 @@ func (s *TokenService) RefreshTokens(oldRefreshToken string) (newAccessToken, ne
 // RevokeTokens добавляет оба токена в черный список при логауте
 func (s *TokenService) RevokeTokens(accessToken, refreshToken string) {
 	if accessToken != "" {
-		if claims, err := utils.GetTokenClaims(accessToken); err == nil {
+		if claims, err := utils.GetTokenClaims(accessToken, s.jwtSecret); err == nil {
 			if exp, ok := claims["exp"].(float64); ok {
 				ttl := time.Until(time.Unix(int64(exp), 0))
 				if ttl > 0 {
@@ -118,7 +118,7 @@ func (s *TokenService) RevokeTokens(accessToken, refreshToken string) {
 		}
 	}
 	if refreshToken != "" {
-		if claims, err := utils.GetTokenClaims(refreshToken); err == nil {
+		if claims, err := utils.GetTokenClaims(refreshToken, s.jwtSecret); err == nil {
 			if exp, ok := claims["exp"].(float64); ok {
 				ttl := time.Until(time.Unix(int64(exp), 0))
 				if ttl > 0 {
