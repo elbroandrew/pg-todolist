@@ -69,7 +69,7 @@ services:
     image: mysql:latest
     healthcheck:
       # проверка на готовность БД, чтобы мигратор мог выполниться после него. Использую 'SELECT 1;'.
-      test: ["CMD", "mysql", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}", "-e", "SELECT 1;", "${MYSQL_DATABASE}"]
+      test: ["CMD", "mysql", "-h", "127.0.0.1", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}", "-e", "SELECT 1;", "${MYSQL_DATABASE}"]
       interval: 5s
       timeout: 5s
       retries: 20
