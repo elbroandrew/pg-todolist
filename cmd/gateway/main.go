@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"pg-todolist/internal/handlers"
-	"pg-todolist/internal/models"
 	"pg-todolist/internal/repository"
 	"pg-todolist/internal/router"
 	"pg-todolist/internal/service"
@@ -23,7 +22,7 @@ func main() {
 
 	db := database.InitMySQL()
 	sqlDB, _ := db.DB()
-	db.AutoMigrate(&models.User{})  // Gateway знает только про пользователей
+
 
 	redisCache := cache.InitRedis(
 		os.Getenv("REDIS_ADDR"),
