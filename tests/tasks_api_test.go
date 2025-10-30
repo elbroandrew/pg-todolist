@@ -15,26 +15,36 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 
 func setUpTestApp() *gin.Engine{
+
+	mockTokenService := new(service.TokenServiceMock)
+
+	/*
+	когда AuthMiddleware вызовет ValidateAccessToken,
+	мок должен вернуть userID 1 и отсутствие ошибки.
+	mock.Anything - потому что не важен сам токен, его сгенерирую позже.
+	*/
+	mockTokenService.On("ValidateAccessToken", mock.Anything).Return(1, nil)
+
 	userRepo := repository.NewUserRepository(testDB)
 	taskRepo := repository.NewTaskRepository(testDB)
 
 	jwtSecret := "secret123"
 	os.Setenv("JWT_SECRET", jwtSecret)
 
-	tokenService := service.NewTokenService(jwtSecret)
 	taskService := service.NewTaskService(taskRepo)
 	authService := service.NewAuthService(userRepo)
 
 	taskHandler := handlers.NewTaskHandler(taskService)
-	authHandler := handlers.NewAuthHandler(authService, tokenService)
+	authHandler := handlers.NewAuthHandler(authService, mockTokenService)
 
 	taskServiceRouter := router.SetupTaskServiceRouter(taskHandler)
 	proxyTargetServer := httptest.NewServer(taskServiceRouter)
-	gatewayRouter := router.SetupGatewayRouter(authHandler, tokenService, nil, proxyTargetServer.URL)
+	gatewayRouter := router.SetupGatewayRouter(authHandler, mockTokenService, nil, proxyTargetServer.URL)
 
 	return gatewayRouter
 }

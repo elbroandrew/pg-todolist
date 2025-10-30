@@ -63,7 +63,7 @@ func NewReverseProxy(target string) gin.HandlerFunc {
 
 func SetupGatewayRouter(
 	authHandler *handlers.AuthHandler,
-	tokenService *service.TokenService,
+	tokenService service.ITokenService,
 	redisClient *redis.Client,
 	taskServiceURL string,
 ) *gin.Engine {

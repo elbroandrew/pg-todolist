@@ -93,13 +93,16 @@ func TestMain(m *testing.M) {
 	}
 	defer db.Close()
 
+
 	// Подключаемся через GORM
 	log.Println("Attempting connection with GORM")
-	testDB, err = gorm.Open(gormysql.Open(connStr), &gorm.Config{})
+	gormDB, err := gorm.Open(gormysql.Open(connStr), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("GORM connection failed: %v", err)
 	}
 	log.Println("SUCCESS: GORM connection successful!")
+
+	testDB = gormDB
 
 	log.Println("Running migration on test database...")
 	err = testDB.AutoMigrate(&models.User{}, &models.Task{})

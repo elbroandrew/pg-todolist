@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware(tokenService *service.TokenService) gin.HandlerFunc {
+func AuthMiddleware(tokenService service.ITokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		
