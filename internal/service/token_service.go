@@ -106,7 +106,7 @@ func (s *TokenService) RefreshTokens(oldRefreshToken string) (newAccessToken, ne
 }
 
 // RevokeTokens добавляет оба токена в черный список при логауте
-func (s *TokenService) RevokeTokens(accessToken, refreshToken string) {
+func (s *TokenService) RevokeTokens(accessToken, refreshToken string) error {
 	if accessToken != "" {
 		if claims, err := utils.GetTokenClaims(accessToken, s.jwtSecret); err == nil {
 			if exp, ok := claims["exp"].(float64); ok {
@@ -127,4 +127,6 @@ func (s *TokenService) RevokeTokens(accessToken, refreshToken string) {
 			}
 		}
 	}
+
+	return nil
 }

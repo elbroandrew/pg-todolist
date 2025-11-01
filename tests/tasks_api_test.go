@@ -21,14 +21,14 @@ import (
 
 func setUpTestApp() *gin.Engine{
 
-	mockTokenService := new(service.TokenServiceMock)
+	mockTokenService := service.NewTokenServiceMock()
 
 	/*
 	когда AuthMiddleware вызовет ValidateAccessToken,
 	мок должен вернуть userID 1 и отсутствие ошибки.
 	mock.Anything - потому что не важен сам токен, его сгенерирую позже.
 	*/
-	mockTokenService.On("ValidateAccessToken", mock.Anything).Return(1, nil)
+	mockTokenService.On("ValidateAccessToken", mock.AnythingOfType("string")).Return(uint(1), nil)
 
 	userRepo := repository.NewUserRepository(testDB)
 	taskRepo := repository.NewTaskRepository(testDB)
@@ -62,14 +62,21 @@ func TestTasksAPI_CreateAndGetTasks(t *testing.T){
 		Password: "pa$$w0rd1",
 	}
 
-	testDB.Create(testUser) // ID 1
+	err := testDB.Create(testUser).Error // ID 1
+	assert.NoError(t, err)
+	assert.NoError(t, err)
+    t.Logf("Created test user with ID: %d", testUser.ID)
+
 	jwtSecret := "secret123"
 	os.Setenv("JWT_SECRET", jwtSecret)
 
 	tokenService := service.NewTokenService(jwtSecret)
 
-	accessToken, _, _ := tokenService.GenerateTokenPair(testUser.ID)
+	accessToken, _, err := tokenService.GenerateTokenPair(testUser.ID)
+	assert.NoError(t, err)
+
 	authHeader := "Bearer " + accessToken
+	t.Logf("Auth header: %s", authHeader)
 
 	// new task
 	taskPayload := `{"title": "Integration test 1"}`
@@ -77,15 +84,19 @@ func TestTasksAPI_CreateAndGetTasks(t *testing.T){
 	reqCreate.Header.Set("Content-Type", "application/json")
 	reqCreate.Header.Set("Authorization", authHeader)
 
+	 t.Logf("Making POST request to /tasks")
 	wCreate := httptest.NewRecorder()
 	testRouter.ServeHTTP(wCreate, reqCreate)
+
+	t.Logf("Response status: %d", wCreate.Code)
+    t.Logf("Response body: %s", wCreate.Body.String())
 
 
 	//assert
 	assert.Equal(t, http.StatusCreated, wCreate.Code, "Expected status 201 Created")
 
 	var createdTask models.Task
-	err := json.Unmarshal(wCreate.Body.Bytes(), &createdTask)
+	err = json.Unmarshal(wCreate.Body.Bytes(), &createdTask)
 	assert.NoError(t, err)
 	assert.Equal(t, "Integration test 1", createdTask.Title)
 

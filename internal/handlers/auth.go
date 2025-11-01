@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"pg-todolist/internal/app_errors"
 	"pg-todolist/internal/dto"
@@ -101,7 +102,9 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	refreshToken, _ := c.Cookie("refresh_token")
 
 	//Отзываю оба токена
-	h.tokenService.RevokeTokens(accessToken, refreshToken)
+	if err := h.tokenService.RevokeTokens(accessToken, refreshToken); err != nil {
+		log.Printf("Failed to revoke tokens: %v", err)
+	}
 	
 
 	// Clear the refresh token cookie
