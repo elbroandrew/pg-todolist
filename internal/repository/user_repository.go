@@ -15,7 +15,7 @@ type UserRepository struct {
 	db *gorm.DB
 }
 // ф-ия конструктор
-func NewUserRepository(db *gorm.DB) *UserRepository {
+func NewUserRepository(db *gorm.DB) IUserRepository {
 	return &UserRepository{db: db}
 }
 
