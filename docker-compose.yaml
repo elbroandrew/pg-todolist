@@ -33,9 +33,11 @@ services:
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 10s
+      interval: 600s
       timeout: 5s
       retries: 5
+      start_period: 15s
+      start_interval: 5s
     environment:
       - TASK_SERVICE_PORT=${TASK_SERVICE_PORT}
       - MYSQL_HOST=mysql
@@ -66,14 +68,15 @@ services:
       mysql:
         condition: service_healthy
   mysql:
-    image: mysql:latest
+    image: mysql:9.5
     healthcheck:
       # проверка на готовность БД, чтобы мигратор мог выполниться после него. Использую 'SELECT 1;'.
       test: ["CMD", "mysql", "-h", "127.0.0.1", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}", "-e", "SELECT 1;", "${MYSQL_DATABASE}"]
-      interval: 5s
+      interval: 600s  # интервал задержки между retries
       timeout: 5s
-      retries: 20
+      retries: 20  # если хоть 1 из 20 будет положительным, то сервис будет healthy, след проверка будет через 'interval'
       start_period: 20s  # даю контейнеру 20 сек на разогрев перед первой проверкой
+      start_interval: 5s
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -88,7 +91,7 @@ services:
     networks:
       - todolist-network
   redis:
-    image: redis:latest
+    image: redis:8.2.2-alpine
     ports:
       - "6379:6379"
     volumes:
